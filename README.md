@@ -2,445 +2,26 @@
 
 ## Overview
 
-The Real-Time Mutual Fund Screener is an interactive Streamlit dashboard built to help Mutual Fund Distributors identify the best-performing mutual fund schemes using a transparent, risk-adjusted scoring framework.
-
-The application computes all performance and risk metrics directly from raw NAV history and ranks schemes only within their respective categories.
-
-The dashboard provides:
-
-- Market Context Overview
-- Fund Screening & Ranking
-- Composite Score Breakdown
-- NAV Trend Analysis
-- Live NAV Tracking
-- Fund Comparison Mode
+This project is an interactive Streamlit dashboard that ranks mutual fund schemes using performance and risk metrics computed directly from historical NAV data. The dashboard enables users to filter schemes, analyze rankings, compare funds, and understand the logic behind each score.
 
 ---
 
-## Project Structure
+# Setup
 
-```text
-mf_screener/
-│
-├── compute_metrics.py
-├── score_schemes.py
-├── dashboard.py
-├── convert_parquet.py
-├── download_nifty.py
-├── validate_metrics.py
-├── requirements.txt
-│
-├── data/
-│   ├── schemes_clean.csv
-│   ├── nav_history_clean.csv
-│   ├── nav_history.parquet
-│   ├── nifty50.csv
-│   ├── market_context.csv
-│   ├── metrics_output.csv
-│   ├── metrics_checkpoint.csv
-│   └── scored_schemes.csv
-│
-└── README.md
-```
-
----
-
-# Objective
-
-Build an interactive dashboard that helps mutual fund distributors:
-
-- Identify top-performing schemes
-- Understand ranking logic
-- Compare funds objectively
-- Analyze risk-adjusted performance
-- Monitor NAV trends
-- Access live NAV data
-
----
-
-# Data Sources
-
-## 1. NAV History
-
-Source:
-AMFI Historical NAV Data
-
-Used For:
-
-- Returns
-- CAGR
-- Volatility
-- Sharpe Ratio
-- Sortino Ratio
-- Drawdown
-
----
-
-## 2. Nifty 50 Historical Data
-
-File:
-
-```text
-data/nifty50.csv
-```
-
-Used For:
-
-- Beta Calculation
-- Market Benchmarking
-
----
-
-## 3. Live NAV API
-
-```text
-https://api.mfapi.in/mf/{scheme_code}
-```
-
-Used For:
-
-- Latest NAV
-- Latest NAV Date
-
----
-
-## 4. Market Context Data
-
-File:
-
-```text
-data/market_context.csv
-```
-
-Contains:
-
-- Nifty 50 1Y Return
-- Midcap 150 1Y Return
-- Smallcap 250 1Y Return
-- Repo Rate
-- CPI Inflation
-- Industry AUM
-
----
-
-# Metric Definitions
-
-## Absolute Returns
-
-Calculated For:
-
-- 1 Month
-- 3 Months
-- 6 Months
-- 1 Year
-- 3 Years
-
-Formula:
-
-```text
-Return (%) =
-((Ending NAV - Starting NAV) / Starting NAV) × 100
-```
-
----
-
-## CAGR
-
-Calculated For:
-
-- 1 Year
-- 3 Years
-- 5 Years
-
-Formula:
-
-```text
-CAGR =
-((Ending NAV / Starting NAV) ^ (1 / Years) - 1) × 100
-```
-
----
-
-## Annualized Volatility
-
-Measures variation in daily returns.
-
-Formula:
-
-```text
-Volatility =
-Daily Return Standard Deviation × √252
-```
-
----
-
-## Sharpe Ratio
-
-Measures return earned per unit of risk.
-
-Risk-Free Rate Used:
-
-```text
-6.5%
-```
-
-Formula:
-
-```text
-Sharpe Ratio =
-(Annual Return − Risk Free Rate)
-/
-Annualized Volatility
-```
-
----
-
-## Sortino Ratio
-
-Measures return earned per unit of downside risk.
-
-Formula:
-
-```text
-Sortino Ratio =
-(Annual Return − Risk Free Rate)
-/
-Downside Volatility
-```
-
----
-
-## Maximum Drawdown
-
-Measures largest historical decline from peak NAV.
-
-Formula:
-
-```text
-Drawdown =
-(NAV / Rolling Peak NAV) − 1
-```
-
-Lower drawdown indicates better capital preservation.
-
----
-
-## Beta
-
-Measures sensitivity to Nifty 50.
-
-Interpretation:
-
-| Beta | Meaning |
-|--------|----------|
-| < 1 | Less Volatile Than Market |
-| = 1 | Similar To Market |
-| > 1 | More Volatile Than Market |
-
-Calculated for equity-oriented schemes.
-
----
-
-# Risk Classification
-
-| Volatility | Risk Level |
-|------------|------------|
-| < 8% | Low |
-| 8% – 18% | Moderate |
-| > 18% | High |
-
----
-
-# Investment Horizon Classification
-
-| History Available | Horizon |
-|------------------|----------|
-| < 3 Years | Short Term |
-| 3 – 5 Years | Medium Term |
-| > 5 Years | Long Term |
-
----
-
-# Composite Scoring Methodology
-
-All schemes are ranked only within their own category.
-
-Examples:
-
-- Large Cap vs Large Cap
-- Mid Cap vs Mid Cap
-- Debt vs Debt
-- Hybrid vs Hybrid
-
-Cross-category ranking is never performed.
-
----
-
-## Score Weights
-
-| Metric | Weight |
-|----------|----------|
-| 1Y Return | 25% |
-| 3Y Return | 20% |
-| Sharpe Ratio | 25% |
-| Sortino Ratio | 15% |
-| Maximum Drawdown | 15% |
-
----
-
-## Normalization
-
-Every metric is normalized to a:
-
-```text
-0 – 100 Scale
-```
-
-Where:
-
-```text
-100 = Best Scheme In Category
-
-0 = Worst Scheme In Category
-```
-
-For Drawdown:
-
-```text
-Lower Drawdown = Higher Score
-```
-
-Hence:
-
-```python
-drawdown_score =
-100 - normalized_drawdown
-```
-
----
-
-## Composite Score Formula
-
-```text
-Composite Score =
-
-(25% × 1Y Return Score)
-
-+ (20% × 3Y Return Score)
-
-+ (25% × Sharpe Score)
-
-+ (15% × Sortino Score)
-
-+ (15% × Drawdown Score)
-```
-
-Final Score Range:
-
-```text
-0 – 100
-```
-
-Higher score indicates stronger risk-adjusted performance.
-
----
-
-# Dashboard Features
-
-## 1. Market Context Bar
-
-Always Visible
-
-Displays:
-
-- Nifty 50 Return
-- Midcap 150 Return
-- Smallcap 250 Return
-- Repo Rate
-- CPI Inflation
-- Industry AUM
-
----
-
-## 2. Screener Panel
-
-Filters:
-
-- Category
-- AMC
-- Plan Type
-- Risk Level
-- Horizon
-
-Features:
-
-- Real-Time Filtering
-- Sortable Fund Table
-- Composite Score Ranking
-- Top 3 Schemes Per Category Badged
-
----
-
-## 3. Score Breakdown
-
-Displays:
-
-- Composite Score
-- Category Rank
-- Radar Chart
-- Metric Rankings
-- Beta Interpretation
-- Strengths & Weaknesses Summary
-
----
-
-## 4. NAV Trend Analysis
-
-Displays:
-
-- Historical NAV Trend
-- Category Average Comparison
-- Rolling 3-Month Return
-- Live NAV
-- NAV Statistics
-- NAV Insights
-
----
-
-## 5. Compare Mode
-
-Compare 2–3 Mutual Funds
-
-Includes:
-
-- Metrics Comparison Table
-- Composite Score Chart
-- NAV Comparison Chart
-- Top Ranked Fund Identification
-
----
-
-# Installation
-
-Clone Repository
+## Clone Repository
 
 ```bash
-git clone https://github.com/your-username/mf_screener.git
-```
-
-Move Into Project Folder
-
-```bash
+git clone <repository-url>
 cd mf_screener
 ```
 
-Install Dependencies
+## Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run Dashboard
+## Run Dashboard
 
 ```bash
 streamlit run dashboard.py
@@ -448,86 +29,198 @@ streamlit run dashboard.py
 
 ---
 
-# Requirements
+# Data Sources
 
-Main Libraries:
+### Mutual Fund NAV Data
+
+* AMFI India
+* MFAPI
+
+### Market Benchmark Data
+
+* Nifty 50 Historical Data
+
+### Market Context Indicators
+
+* Repo Rate
+* CPI Inflation
+* Industry AUM
+
+All performance and risk metrics are derived from raw NAV history. No third-party rating or ranking services are used.
+
+---
+
+# Metric Definitions
+
+## Return Metrics
+
+### 1M Return
+
+Percentage change in NAV over the last 1 month.
+
+### 3M Return
+
+Percentage change in NAV over the last 3 months.
+
+### 6M Return
+
+Percentage change in NAV over the last 6 months.
+
+### 1Y Return
+
+Percentage change in NAV over the last 1 year.
+
+### 3Y Return
+
+Percentage change in NAV over the last 3 years.
+
+---
+
+## CAGR Metrics
+
+### 1Y CAGR
+
+Annualized growth rate over 1 year.
+
+### 3Y CAGR
+
+Annualized growth rate over 3 years.
+
+### 5Y CAGR
+
+Annualized growth rate over 5 years where sufficient history is available.
+
+---
+
+## Risk Metrics
+
+### Annualized Standard Deviation
+
+Measures volatility of fund returns.
+
+### Sharpe Ratio
+
+Measures excess return earned per unit of total risk.
+
+Risk-Free Rate Used:
 
 ```text
-streamlit
-pandas
-numpy
-plotly
-requests
-pyarrow
-tqdm
+6.5%
 ```
+
+### Sortino Ratio
+
+Measures excess return earned per unit of downside risk.
+
+### Maximum Drawdown
+
+Largest historical decline from peak NAV to trough NAV.
+
+Lower drawdown indicates better capital preservation.
+
+### Beta
+
+Measures sensitivity of a fund relative to Nifty 50.
+
+* Beta > 1 : More volatile than market
+* Beta < 1 : Less volatile than market
+* Beta = 1 : Similar market movement
 
 ---
 
-# Deployment
+# Scoring Logic
 
-Deployed on:
+Funds are ranked only against schemes within the same category.
 
-Streamlit Community Cloud
+Cross-category comparisons are not performed.
 
-Deployment Steps:
+Each metric is normalized to a 0–100 scale before scoring.
 
-1. Push project to GitHub
-2. Open https://share.streamlit.io
-3. Connect GitHub Repository
-4. Select:
+## Composite Score Formula
+
+| Metric           | Weight |
+| ---------------- | ------ |
+| 1Y Return        | 25%    |
+| 3Y Return        | 20%    |
+| Sharpe Ratio     | 25%    |
+| Sortino Ratio    | 15%    |
+| Maximum Drawdown | 15%    |
+
+### Weight Rationale
+
+* 1Y Return rewards recent performance.
+* 3Y Return rewards consistency.
+* Sharpe Ratio measures risk-adjusted return.
+* Sortino Ratio evaluates downside risk management.
+* Maximum Drawdown rewards capital preservation.
+
+### Final Score
 
 ```text
-dashboard.py
+Composite Score =
+0.25 × Return Score
++ 0.20 × 3Y Return Score
++ 0.25 × Sharpe Score
++ 0.15 × Sortino Score
++ 0.15 × Drawdown Score
 ```
 
-5. Deploy
+The final score ranges from 0 to 100.
+
+Higher scores indicate stronger overall performance after considering both returns and risk.
 
 ---
 
-# Acceptance Criteria Coverage
+# Dashboard Features
 
-✅ Metrics computed from raw NAV history
+### Market Context
 
-✅ Live NAV polling using MFAPI
+Displays:
 
-✅ Category-wise ranking
+* Nifty 50 (1Y Return)
+* Midcap 150 (1Y Return)
+* Smallcap 250 (1Y Return)
+* Repo Rate
+* CPI Inflation
+* Industry AUM
 
-✅ Composite scoring engine
+### Fund Screener
 
-✅ Real-time filtering
+* Category Filter
+* AMC Filter
+* Plan Type Filter
+* Risk Filter
+* Horizon Filter
+* Top 3 Funds per Category Badged
 
-✅ Top 3 schemes per category badged
+### Score Breakdown
 
-✅ Score breakdown visualization
+* Radar Chart
+* Metric Rankings
+* Strength & Weakness Analysis
+* Category Rank Explanation
 
-✅ NAV trend analysis
+### NAV Trend Analysis
 
-✅ Rolling 3M return chart
+* Historical NAV Trend
+* Category Average Comparison
+* Rolling 3-Month Return
+* Live NAV Tracking
 
-✅ Compare mode for 2–3 schemes
+### Compare Mode
 
-✅ Streamlit Cloud deployment ready
-
-✅ GitHub repository documentation
+* Compare 2–3 Funds
+* Metrics Comparison Table
+* Composite Score Comparison
+* NAV Trend Comparison
 
 ---
 
-# Built With
+# Technology Stack
 
-- Python
-- Pandas
-- NumPy
-- Plotly
-- Streamlit
-- Requests
-- MFAPI
-
----
-
-## Author
-
-Sukriti Mahajan
-
-Real-Time Mutual Fund Screener Dashboard
-(Task 2)
+* Python
+* Pandas
+* NumPy
+* Streamlit
+* Plotly
+* Requests
