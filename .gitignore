@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Large data files
+data/nav_history_clean.csv
+data/nav_history.parquet
+
+# OS files
+.DS_Store
+Thumbs.db

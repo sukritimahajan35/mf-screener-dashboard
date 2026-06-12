@@ -1,0 +1,11 @@
+pandas
+numpy
+scipy
+pyarrow
+streamlit
+plotly
+requests
+tqdm
+yfinance
+openpyxl
+matplotlib
